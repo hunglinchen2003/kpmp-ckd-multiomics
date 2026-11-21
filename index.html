@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KPMP CKD multi-omics practice</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <p class="eyebrow" data-i18n="eyebrow">KPMP open data</p>
+    <h1 data-i18n="title">多體學 CKD 檢驗練習</h1>
+  </div>
+  <div class="top-actions">
+    <nav>
+      <button type="button" data-page="dashboard" class="active" data-i18n="navDash">總覽</button>
+      <button type="button" data-page="data" data-i18n="navData">訓練資料</button>
+    </nav>
+    <button type="button" id="lang" class="lang">English</button>
+  </div>
+</header>
+<main>
+  <section id="dashboard" class="page">
+    <p class="lead" data-i18n="lead"></p>
+    <p class="note" data-i18n="disclaimer"></p>
+    <section class="showcase">
+      <div class="showcase-head">
+        <h2 data-i18n="showTitle">組織展示</h2>
+        <p data-i18n="showNote"></p>
+      </div>
+      <div id="modes" class="modes"></div>
+      <div class="stage-wrap">
+        <div class="stage">
+          <img id="he" alt="">
+          <canvas id="spots"></canvas>
+          <div id="tip" hidden></div>
+        </div>
+        <aside id="legend"></aside>
+      </div>
+    </section>
+    <h2 data-i18n="cardsTitle">各體學預測</h2>
+    <div id="cards" class="cards"></div>
+  </section>
+  <section id="data" class="page" hidden>
+    <div id="data-tabs" class="modes"></div>
+    <div id="data-panel"></div>
+  </section>
+</main>
+<footer>
+  <p data-i18n="footer"></p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
