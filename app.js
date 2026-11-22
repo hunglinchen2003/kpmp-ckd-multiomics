@@ -36,6 +36,8 @@ const STR = {
     spot: "下面是各標記平均值。指定的型態是各自標準化之後最高的那個，再讓鄰近 spot 平滑，所以不一定是原始值最大的標記。",
     hover: "把游標移到組織上的圓點",
     pageOf: "列",
+    ionTitle: "164-12 的空間脂質、代謝與 N-醣",
+    ionNote: "這是 164-12 鄰近切片的影像質譜，沒有對到上面的 Visium H&E，也不是右邊那位 CKD 的切片。單張圖的黃白色只代表這張圖裡較強的訊號，不能拿來比較不同分子的絕對量。合成圖用不同顏色區分分子。N-醣是未衍生的 [M+Na]+，相同 m/z 的異構物沒有分開。",
   },
   en: {
     eyebrow: "KPMP open data",
@@ -74,6 +76,8 @@ const STR = {
     spot: "Values below are marker means. The assigned type is the highest after each marker is standardized, then lightly smoothed, so it is not always the largest raw value.",
     hover: "Move over a dot on the tissue",
     pageOf: "rows",
+    ionTitle: "Spatial lipid, metabolite, and N-glycan maps for 164-12",
+    ionNote: "These are imaging mass spectrometry maps from neighboring sections of 164-12. They are not registered to the Visium H&E above, and they are not the CKD section on the right. Yellow-white means a stronger signal inside that one image, not a concentration that can be compared across molecules. The composite uses a different color for each molecule. N-glycans are underivatized [M+Na]+, so isomers that share an m/z are not separated.",
   },
 };
 
@@ -104,6 +108,7 @@ let dataKey = "protein";
 let sortKey = "id";
 let sortDir = 1;
 let mode = "cell";
+let ionKey = "lipid";
 let spotScale = 1;
 
 function t(key) { return STR[lang][key]; }
@@ -373,6 +378,43 @@ function renderShowcase() {
   });
 }
 
+function renderIons() {
+  const maps = page.ionMaps;
+  const tabs = document.getElementById("ion-tabs");
+  const panel = document.getElementById("ion-panel");
+  if (!maps) {
+    tabs.innerHTML = "";
+    panel.innerHTML = "";
+    return;
+  }
+  tabs.innerHTML = "";
+  maps.assays.forEach((assay) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = assay[lang];
+    button.className = assay.key === ionKey ? "active" : "";
+    button.addEventListener("click", () => {
+      ionKey = assay.key;
+      renderIons();
+    });
+    tabs.appendChild(button);
+  });
+  const assay = maps.assays.find((item) => item.key === ionKey) || maps.assays[0];
+  const polarity = assay.polarity === "positive" ? (lang === "zh" ? "正離子" : "positive") : (lang === "zh" ? "負離子" : "negative");
+  const compositeCaption = lang === "zh"
+    ? `合成圖 · ${polarity} · 一種顏色一個分子`
+    : `Composite · ${polarity} · one color per molecule`;
+  const figures = [`<figure><img class="map" alt="${assay[lang]} composite" src="${assay.composite}"><figcaption>${compositeCaption}</figcaption></figure>`];
+  assay.items.forEach((item) => {
+    const structure = item.structure ? `<img class="structure" alt="${item.label}" src="${item.structure}">` : "";
+    const picture = structure
+      ? `<div class="pair"><img class="map" alt="${item.label}" src="${item.src}">${structure}</div>`
+      : `<img class="map" alt="${item.label}" src="${item.src}">`;
+    figures.push(`<figure>${picture}<figcaption><i class="dot" style="background:${item.color}"></i>${item.label}<br>m/z ${item.mz} · ${Number(item.intensity).toExponential(2)}</figcaption></figure>`);
+  });
+  panel.innerHTML = `<div class="ion-grid">${figures.join("")}</div>`;
+}
+
 function renderCards() {
   const root = document.getElementById("cards");
   root.innerHTML = "";
@@ -485,6 +527,7 @@ function showPage(name) {
   document.getElementById("data").hidden = name !== "data";
   if (name === "dashboard") {
     renderShowcase();
+    renderIons();
     renderCards();
   } else {
     renderData();
