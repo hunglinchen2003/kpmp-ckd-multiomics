@@ -434,6 +434,13 @@ function rowClass(label) {
   return label === "CKD" ? "ckd" : "ref";
 }
 
+function placeDataCard(panel, model) {
+  const card = renderCard(model);
+  card.classList.add("data-card");
+  panel.appendChild(card);
+  if (card._paint) card._paint();
+}
+
 function renderData() {
   const tabs = document.getElementById("data-tabs");
   tabs.innerHTML = "";
@@ -451,12 +458,9 @@ function renderData() {
   });
   const panel = document.getElementById("data-panel");
   const model = page.models[dataKey];
+  panel.innerHTML = "";
+  placeDataCard(panel, model);
   if (dataKey === "lipid" || dataKey === "spatial_metabolite" || dataKey === "nglycan") {
-    panel.innerHTML = "";
-    const card = renderCard(model);
-    card.classList.add("data-card");
-    panel.appendChild(card);
-    if (card._paint) card._paint();
     const pictures = model.rows.filter((row) => row.src);
     const block = document.createElement("div");
     block.innerHTML = `<p class="muted">${t("sampleMaps")}</p><div class="tools"><input id="q3" placeholder="${t("search")}"><select id="klass3"><option value="all">${t("all")}</option><option value="Healthy Reference">${t("reference")}</option><option value="CKD">${t("ckd")}</option></select></div><p class="muted" id="map-count"></p><div class="ion-gallery" id="ion-gallery"></div>`;
@@ -476,7 +480,9 @@ function renderData() {
   }
   if (dataKey === "histology" || dataKey === "visium") {
     const images = dataKey === "histology" ? page.histologyGallery : model.rows.filter((row) => row.src);
-    panel.innerHTML = `<div class="tools"><input id="q" placeholder="${t("search")}"><select id="klass"><option value="all">${t("all")}</option><option value="Healthy Reference">${t("reference")}</option><option value="CKD">${t("ckd")}</option></select></div><p class="muted">${images.length} ${t("pageOf")}</p><div class="gallery" id="gallery"></div>`;
+    const block = document.createElement("div");
+    block.innerHTML = `<div class="tools"><input id="q" placeholder="${t("search")}"><select id="klass"><option value="all">${t("all")}</option><option value="Healthy Reference">${t("reference")}</option><option value="CKD">${t("ckd")}</option></select></div><p class="muted">${images.length} ${t("pageOf")}</p><div class="gallery" id="gallery"></div>`;
+    panel.appendChild(block);
     const draw = () => {
       const query = document.getElementById("q").value.trim().toLowerCase();
       const klass = document.getElementById("klass").value;
@@ -488,13 +494,12 @@ function renderData() {
         gallery.appendChild(figure);
       });
     };
-    panel.querySelector("#q").addEventListener("input", draw);
-    panel.querySelector("#klass").addEventListener("change", draw);
+    block.querySelector("#q").addEventListener("input", draw);
+    block.querySelector("#klass").addEventListener("change", draw);
     draw();
     if (dataKey === "visium") panel.appendChild(tableBlock(model));
     return;
   }
-  panel.innerHTML = "";
   panel.appendChild(tableBlock(model));
 }
 
