@@ -36,8 +36,8 @@ const STR = {
     spot: "下面是各標記平均值。指定的型態是各自標準化之後最高的那個，再讓鄰近 spot 平滑，所以不一定是原始值最大的標記。",
     hover: "把游標移到組織上的圓點",
     pageOf: "列",
-    ionTitle: "164-12 的空間脂質、代謝與 N-醣",
-    ionNote: "這是 164-12 鄰近切片的影像質譜，沒有對到上面的 Visium H&E，也不是右邊那位 CKD 的切片。單張圖的黃白色只代表這張圖裡較強的訊號，不能拿來比較不同分子的絕對量。合成圖用不同顏色區分分子。N-醣是未衍生的 [M+Na]+，相同 m/z 的異構物沒有分開。",
+    ionTitle: "空間脂質、空間代謝、空間 N-醣的組織分布",
+    ionNote: "下面三組都是 164-12 的影像質譜，每一張是一種分子在組織上的分布。合成圖用不同顏色區分分子。單張圖的黃白色只代表這張圖裡較強的訊號，不能拿來比較不同分子的絕對量。這些切片沒有對到 Visium H&E，也不是 CKD 31-10177。N-醣是未衍生的 [M+Na]+，相同 m/z 的異構物沒有分開。",
   },
   en: {
     eyebrow: "KPMP open data",
@@ -76,8 +76,8 @@ const STR = {
     spot: "Values below are marker means. The assigned type is the highest after each marker is standardized, then lightly smoothed, so it is not always the largest raw value.",
     hover: "Move over a dot on the tissue",
     pageOf: "rows",
-    ionTitle: "Spatial lipid, metabolite, and N-glycan maps for 164-12",
-    ionNote: "These are imaging mass spectrometry maps from neighboring sections of 164-12. They are not registered to the Visium H&E above, and they are not the CKD section on the right. Yellow-white means a stronger signal inside that one image, not a concentration that can be compared across molecules. The composite uses a different color for each molecule. N-glycans are underivatized [M+Na]+, so isomers that share an m/z are not separated.",
+    ionTitle: "Tissue maps: spatial lipidomics, metabolomics, and N-glycomics",
+    ionNote: "The three blocks below are imaging mass spectrometry from participant 164-12. Each picture is one molecule across the tissue. The composite gives each molecule its own color. Yellow-white means a stronger signal inside that one image, not a concentration that can be compared across molecules. These sections are not registered to the Visium H&E, and they are not CKD 31-10177. N-glycans are underivatized [M+Na]+, so isomers that share an m/z are not separated.",
   },
 };
 
@@ -108,7 +108,6 @@ let dataKey = "protein";
 let sortKey = "id";
 let sortDir = 1;
 let mode = "cell";
-let ionKey = "lipid";
 let spotScale = 1;
 
 function t(key) { return STR[lang][key]; }
@@ -185,6 +184,7 @@ function rocSvg(points) {
 function renderCard(model) {
   const card = document.createElement("article");
   card.className = "card";
+  const ionStrip = cardIons(model.key);
   const title = META[model.key][lang];
   const sampleLine = model.n ? `${model.n} · ${model.n_reference} reference · ${model.n_ckd} CKD` : "";
   let extra = "";
@@ -200,6 +200,7 @@ function renderCard(model) {
     <div class="metrics"><div><b>${model.auc == null ? "—" : Number(model.auc).toFixed(3)}</b><span>${t("auc")}</span></div>
     <div><b>${model.balanced_accuracy == null ? "—" : Number(model.balanced_accuracy).toFixed(3)}</b><span>${t("bal")}</span></div>
     <div><b>${model.parameters ?? "—"}</b><span>${t("params")}</span></div></div>
+    ${ionStrip}
     ${markers ? `<p class="muted">${model.features.length === 5 ? t("markers") : (lang === "zh" ? "標記" : "Markers")}</p>${markers}` : ""}
     ${extra}<div class="fields"></div><div class="prob" data-p></div><div class="bar"><div data-bar></div></div>`;
   const fields = card.querySelector(".fields");
@@ -378,41 +379,43 @@ function renderShowcase() {
   });
 }
 
+const ION_CARD = { lipid: "lipid", spatial_metabolite: "metabolite", nglycan: "nglycan" };
+
+function ionAssay(key) {
+  if (!page.ionMaps) return null;
+  return page.ionMaps.assays.find((assay) => assay.key === key) || null;
+}
+
+function cardIons(modelKey) {
+  const assay = ionAssay(ION_CARD[modelKey]);
+  if (!assay) return "";
+  const thumbs = [assay.composite, ...assay.items.map((item) => item.src)]
+    .map((src, index) => `<img class="${index === 0 ? "wide" : ""}" alt="" src="${src}">`)
+    .join("");
+  return `<div class="card-ions">${thumbs}</div>`;
+}
+
 function renderIons() {
-  const maps = page.ionMaps;
-  const tabs = document.getElementById("ion-tabs");
   const panel = document.getElementById("ion-panel");
+  const maps = page.ionMaps;
   if (!maps) {
-    tabs.innerHTML = "";
     panel.innerHTML = "";
     return;
   }
-  tabs.innerHTML = "";
-  maps.assays.forEach((assay) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = assay[lang];
-    button.className = assay.key === ionKey ? "active" : "";
-    button.addEventListener("click", () => {
-      ionKey = assay.key;
-      renderIons();
-    });
-    tabs.appendChild(button);
-  });
-  const assay = maps.assays.find((item) => item.key === ionKey) || maps.assays[0];
-  const polarity = assay.polarity === "positive" ? (lang === "zh" ? "正離子" : "positive") : (lang === "zh" ? "負離子" : "negative");
-  const compositeCaption = lang === "zh"
-    ? `合成圖 · ${polarity} · 一種顏色一個分子`
-    : `Composite · ${polarity} · one color per molecule`;
-  const figures = [`<figure><img class="map" alt="${assay[lang]} composite" src="${assay.composite}"><figcaption>${compositeCaption}</figcaption></figure>`];
-  assay.items.forEach((item) => {
-    const structure = item.structure ? `<img class="structure" alt="${item.label}" src="${item.structure}">` : "";
-    const picture = structure
-      ? `<div class="pair"><img class="map" alt="${item.label}" src="${item.src}">${structure}</div>`
-      : `<img class="map" alt="${item.label}" src="${item.src}">`;
-    figures.push(`<figure>${picture}<figcaption><i class="dot" style="background:${item.color}"></i>${item.label}<br>m/z ${item.mz} · ${Number(item.intensity).toExponential(2)}</figcaption></figure>`);
-  });
-  panel.innerHTML = `<div class="ion-grid">${figures.join("")}</div>`;
+  panel.innerHTML = maps.assays.map((assay) => {
+    const polarity = assay.polarity === "positive" ? (lang === "zh" ? "正離子" : "positive") : (lang === "zh" ? "負離子" : "negative");
+    const compositeCaption = lang === "zh"
+      ? `合成圖 · ${polarity} · 一種顏色一個分子`
+      : `Composite · ${polarity} · one color per molecule`;
+    const figures = assay.items.map((item) => {
+      const structure = item.structure ? `<img class="structure" alt="${item.label}" src="${item.structure}">` : "";
+      const picture = structure
+        ? `<div class="pair"><img class="map" alt="${item.label}" src="${item.src}">${structure}</div>`
+        : `<img class="map" alt="${item.label}" src="${item.src}">`;
+      return `<figure>${picture}<figcaption><i class="dot" style="background:${item.color}"></i>${item.label}<br>m/z ${item.mz} · ${Number(item.intensity).toExponential(2)}</figcaption></figure>`;
+    }).join("");
+    return `<section class="assay" id="ion-${assay.key}"><h3>${assay[lang]} · ${polarity}</h3><figure class="composite"><img class="map" alt="${assay[lang]}" src="${assay.composite}"><figcaption>${compositeCaption}</figcaption></figure><div class="ion-grid">${figures}</div></section>`;
+  }).join("");
 }
 
 function renderCards() {
