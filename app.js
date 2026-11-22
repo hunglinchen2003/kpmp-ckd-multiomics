@@ -582,7 +582,7 @@ document.querySelector("nav").addEventListener("click", (event) => {
 window.addEventListener("resize", () => { if (page && page.showcase) drawSpots(); });
 
 applyText();
-fetch("data/site.json")
+fetch("data/site.json?v=20261122h")
   .then((response) => response.json())
   .then((payload) => {
     page = payload;
