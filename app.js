@@ -26,7 +26,7 @@ const STR = {
     ckd: "CKD",
     fitted: "全資料模型 P(CKD)",
     fittedNote: "表格裡的機率是把這列代進全資料模型，不是這個人的 out-of-fold 分數。上方 AUC 才是交叉驗證。",
-    histologyNote: "PAS 是 128×128 的卷積網路，用低倍組織組成，不是高倍診斷。這裡放全部訓練影像；卷積權重留在本機，這張卡不重新跑影像。",
+    histologyNote: "這兩張是低倍 PAS。164-12 是 Healthy Reference，27-10155 是 CKD。每人一張，取全玻片接近 1200 像素長邊的那一層，再縮成 128×128 的紅、綠、藍。判斷用三層 3×3 卷積的局部顏色和粗紋理：組織占畫面的比例、組織塊的形狀，以及 PAS 紫染和淡色背景的對比。縮小三次之後看的是整張切片的構圖，不是腎小球、纖維化或細胞種類的評分，也不是高倍診斷。權重留在本機，這張卡不重新跑影像。",
     visiumNote: "滑桿是七個預先指定的標記平均值。影像卷積網路的 out-of-fold AUC 另外標在卡上。一個 spot 混有多種細胞。",
     lipidNote: "reference 只有 7 人，AUC 不穩定。極性是正離子，SwissLipids。",
     noRow: "沒有列",
@@ -67,7 +67,7 @@ const STR = {
     ckd: "CKD",
     fitted: "Full-data P(CKD)",
     fittedNote: "The probability in the table plugs that row into the full-data model. It is not that person’s out-of-fold score. The AUC above is the cross-validation.",
-    histologyNote: "PAS uses a 128×128 convolutional net on low-power tissue composition, not a high-power diagnosis. All training images are here. The weights stay local, so this card does not rescore images.",
+    histologyNote: "These two are low-power PAS images. 164-12 is Healthy Reference and 27-10155 is CKD. Each person contributes one image, from the pyramid level near 1,200 pixels on the long side, resized to 128×128 red, green, and blue. The decision uses three 3×3 convolutional layers: local color and coarse texture, how much of the frame is tissue, the shape of the tissue pieces, and the contrast between purple PAS stain and pale background. After three pooling steps the model sees the section’s overall composition. It does not score glomeruli, fibrosis, or cell type, and it is not a high-power diagnosis. The weights stay local, so this card does not rescore images.",
     visiumNote: "Sliders are seven prespecified marker means. The image network’s out-of-fold AUC is listed separately. Each spot mixes cells.",
     lipidNote: "The reference group has 7 people, so the AUC is unstable. Polarity is positive, SwissLipids.",
     noRow: "No rows",
@@ -190,7 +190,9 @@ function renderCard(model) {
   const title = META[model.key][lang];
   const sampleLine = model.n ? `${model.n} · ${model.n_reference} reference · ${model.n_ckd} CKD` : "";
   let extra = "";
-  if (model.key === "histology") extra = `<p class="muted">${t("histologyNote")}</p>`;
+  if (model.key === "histology") {
+    extra = `<div class="pair-shots"><figure><img alt="164-12 PAS" src="media/histology/164-12.jpg"><figcaption>164-12 · Reference</figcaption></figure><figure><img alt="27-10155 PAS" src="media/histology/27-10155.jpg"><figcaption>27-10155 · CKD</figcaption></figure></div><p class="muted">${t("histologyNote")}</p>`;
+  }
   if (model.key === "visium") extra = `<p class="muted">${t("visiumNote")} AUC ${model.image_auc.toFixed(3)}.</p>`;
   if (model.key === "lipid") extra = `<p class="muted">${t("lipidNote")}</p>`;
   const markers = (model.features || []).map((feature) => {
