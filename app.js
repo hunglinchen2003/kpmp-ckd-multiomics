@@ -36,6 +36,7 @@ const STR = {
     spot: "下面是各標記平均值。指定的型態是各自標準化之後最高的那個，再讓鄰近 spot 平滑，所以不一定是原始值最大的標記。",
     hover: "把游標移到組織上的圓點",
     pageOf: "列",
+    sampleMaps: "每個訓練樣品一張組織合成圖。不同顏色是該張圖裡不同的分子，不能拿來比較不同樣品的絕對濃度。",
     ionTitle: "空間脂質、空間代謝、空間 N-醣的組織分布",
     ionNote: "下面三組都是 164-12 的影像質譜，每一張是一種分子在組織上的分布。合成圖用不同顏色區分分子。單張圖的黃白色只代表這張圖裡較強的訊號，不能拿來比較不同分子的絕對量。這些切片沒有對到 Visium H&E，也不是 CKD 31-10177。N-醣是未衍生的 [M+Na]+，相同 m/z 的異構物沒有分開。",
   },
@@ -76,6 +77,7 @@ const STR = {
     spot: "Values below are marker means. The assigned type is the highest after each marker is standardized, then lightly smoothed, so it is not always the largest raw value.",
     hover: "Move over a dot on the tissue",
     pageOf: "rows",
+    sampleMaps: "One tissue composite per training sample. Colors distinguish molecules inside that image. They are not concentrations that can be compared across samples.",
     ionTitle: "Tissue maps: spatial lipidomics, metabolomics, and N-glycomics",
     ionNote: "The three blocks below are imaging mass spectrometry from participant 164-12. Each picture is one molecule across the tissue. The composite gives each molecule its own color. Yellow-white means a stronger signal inside that one image, not a concentration that can be compared across molecules. These sections are not registered to the Visium H&E, and they are not CKD 31-10177. N-glycans are underivatized [M+Na]+, so isomers that share an m/z are not separated.",
   },
@@ -449,6 +451,29 @@ function renderData() {
   });
   const panel = document.getElementById("data-panel");
   const model = page.models[dataKey];
+  if (dataKey === "lipid" || dataKey === "spatial_metabolite" || dataKey === "nglycan") {
+    panel.innerHTML = "";
+    const card = renderCard(model);
+    card.classList.add("data-card");
+    panel.appendChild(card);
+    if (card._paint) card._paint();
+    const pictures = model.rows.filter((row) => row.src);
+    const block = document.createElement("div");
+    block.innerHTML = `<p class="muted">${t("sampleMaps")}</p><div class="tools"><input id="q3" placeholder="${t("search")}"><select id="klass3"><option value="all">${t("all")}</option><option value="Healthy Reference">${t("reference")}</option><option value="CKD">${t("ckd")}</option></select></div><p class="muted" id="map-count"></p><div class="ion-gallery" id="ion-gallery"></div>`;
+    const drawMaps = () => {
+      const query = block.querySelector("#q3").value.trim().toLowerCase();
+      const klass = block.querySelector("#klass3").value;
+      const shown = pictures.filter((row) => (klass === "all" || row.enrollment === klass) && row.id.toLowerCase().includes(query));
+      block.querySelector("#map-count").textContent = `${shown.length} ${t("pageOf")}`;
+      block.querySelector("#ion-gallery").innerHTML = shown.map((row) => `<figure><img loading="lazy" alt="${row.id}" src="${row.src}"><figcaption><span class="badge ${rowClass(row.enrollment)}">${row.enrollment === "CKD" ? "CKD" : "Reference"}</span> ${row.id}</figcaption></figure>`).join("");
+    };
+    block.querySelector("#q3").addEventListener("input", drawMaps);
+    block.querySelector("#klass3").addEventListener("change", drawMaps);
+    drawMaps();
+    panel.appendChild(block);
+    panel.appendChild(tableBlock(model));
+    return;
+  }
   if (dataKey === "histology" || dataKey === "visium") {
     const images = dataKey === "histology" ? page.histologyGallery : model.rows.filter((row) => row.src);
     panel.innerHTML = `<div class="tools"><input id="q" placeholder="${t("search")}"><select id="klass"><option value="all">${t("all")}</option><option value="Healthy Reference">${t("reference")}</option><option value="CKD">${t("ckd")}</option></select></div><p class="muted">${images.length} ${t("pageOf")}</p><div class="gallery" id="gallery"></div>`;
