@@ -6,8 +6,8 @@ const STR = {
     navData: "訓練資料",
     lead: "這是用 KPMP 開放的多體學資料做的練習：用 Healthy Reference 和 CKD 兩組，分別訓練血漿蛋白、血漿代謝、PAS 切片、空間脂質、空間代謝、空間 N-醣和空間轉錄組。正類是 CKD。這不是 IgAN 診斷。",
     disclaimer: "Healthy Reference 來自活體捐腎、結石捐腎者和試點腎切除，不是一般健康對照。CKD 入組是糖尿病或高血壓，不是 IgAN。五個標記是用全部樣本挑的，交叉驗證會略為樂觀。類別平衡後的機率用來比較型態，不是這個世代的盛行率。空間實驗的年份、基質和正負離子沒有合併。",
-    showTitle: "同一人的 H&E 與細胞標記",
-    showNote: "164-12，Healthy Reference。圓點是 Visium spot，顏色可在細胞型態和各標記之間切換。游標顯示這個 spot 的細胞型態；血漿和影像質譜是同一人的其他切片或血液，沒有對到這張圖的座標。",
+    showTitle: "H&E 與細胞標記：reference 與 CKD 並排",
+    showNote: "左邊是 164-12，Healthy Reference。右邊是 31-10177，CKD，入組判定為高血壓腎病。兩邊用同一套腎臟標記和同一套顏色。圓點是 Visium spot。游標顯示該 spot 的細胞型態。血漿和影像質譜屬於同一人，但不是這張 H&E 的同一刀。這不是 IgAN。",
     cardsTitle: "各體學的預測卡",
     footer: "資料來源是 KPMP Atlas 的開放檔。機率由網頁裡的係數計算，沒有主機。",
     auc: "交叉驗證 AUC",
@@ -32,7 +32,7 @@ const STR = {
     noRow: "沒有列",
     cell: "細胞型態",
     other: "同一人的其他體學",
-    otherBody: "血漿蛋白和血漿代謝是入組血液，不是這張切片。空間脂質與空間代謝是 S-2111-008287，空間 N-醣是 S-2111-008277，都是鄰近切片。",
+    otherBody: "",
     spot: "下面是各標記平均值。指定的型態是各自標準化之後最高的那個，再讓鄰近 spot 平滑，所以不一定是原始值最大的標記。",
     hover: "把游標移到組織上的圓點",
     pageOf: "列",
@@ -44,8 +44,8 @@ const STR = {
     navData: "Training data",
     lead: "This is a practice classifier on open KPMP data. Healthy Reference and CKD are modeled separately for plasma protein, plasma metabolites, PAS histology, spatial lipidomics, spatial metabolomics, spatial N-glycomics, and spatial transcriptomics. The positive class is CKD. This is not an IgAN diagnosis.",
     disclaimer: "Healthy Reference comes from living kidney donors, stone donors, and a pilot nephrectomy, not a general healthy control. CKD enrollment is diabetes or hypertension, not IgAN. The five markers were chosen on all rows, so cross-validation is slightly optimistic. Class-balanced probabilities compare patterns; they are not the cohort prevalence. Years, matrices, and ion polarities are not pooled.",
-    showTitle: "One H&E section and its cell markers",
-    showNote: "Participant 164-12, Healthy Reference. Dots are Visium spots. Switch the color between cell type and each marker. The cursor shows that spot’s cell type. Plasma and imaging mass spectrometry belong to the same person but are not registered to this image.",
+    showTitle: "H&E and cell markers, reference beside CKD",
+    showNote: "Left is 164-12, Healthy Reference. Right is 31-10177, CKD, adjudicated as hypertensive kidney disease. Both use the same kidney markers and the same colors. Dots are Visium spots. The cursor shows that spot’s cell type. Plasma and imaging mass spectrometry belong to the same person, on neighboring material rather than this H&E. This is not IgAN.",
     cardsTitle: "Prediction cards",
     footer: "Source: open files from the KPMP Atlas. The page computes probabilities from the stored coefficients. There is no server.",
     auc: "Cross-validated AUC",
@@ -70,7 +70,7 @@ const STR = {
     noRow: "No rows",
     cell: "Cell type",
     other: "Other omics for this person",
-    otherBody: "Plasma protein and metabolites are enrollment blood, not this section. Spatial lipidomics and metabolomics are sample S-2111-008287. Spatial N-glycomics is S-2111-008277. Those are neighboring sections.",
+    otherBody: "",
     spot: "Values below are marker means. The assigned type is the highest after each marker is standardized, then lightly smoothed, so it is not always the largest raw value.",
     hover: "Move over a dot on the tissue",
     pageOf: "rows",
@@ -245,86 +245,96 @@ function inferno(fraction) {
   return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 }
 
-function drawSpots() {
-  const image = document.getElementById("he");
-  const canvas = document.getElementById("spots");
-  if (!image.naturalWidth) return;
-  const width = image.clientWidth;
-  const height = image.clientHeight;
-  canvas.width = width;
-  canvas.height = height;
-  spotScale = width / page.showcase.width;
-  const context = canvas.getContext("2d");
-  const show = page.showcase;
-  const valueIndex = show.valueKeys.indexOf(mode);
+function markerRange(valueIndex) {
   let min = Infinity;
   let max = -Infinity;
-  if (valueIndex >= 0) {
-    show.spots.forEach((spot) => {
+  page.showcase.sections.forEach((section) => {
+    section.spots.forEach((spot) => {
       const value = spot[3 + valueIndex];
       min = Math.min(min, value);
       max = Math.max(max, value);
     });
-  }
-  const radius = Math.max(3, width / 140);
-  show.spots.forEach((spot) => {
-    let color = show.types[spot[2]].color;
-    if (valueIndex >= 0) {
-      const fraction = max === min ? 0 : (spot[3 + valueIndex] - min) / (max - min);
-      color = inferno(fraction);
-    }
-    context.beginPath();
-    context.fillStyle = color;
-    context.globalAlpha = 0.9;
-    context.arc(spot[0] * spotScale, spot[1] * spotScale, radius, 0, Math.PI * 2);
-    context.fill();
   });
-  context.globalAlpha = 1;
+  return [min, max];
+}
+
+function drawSpots() {
+  const show = page.showcase;
+  const valueIndex = show.valueKeys.indexOf(mode);
+  const range = valueIndex >= 0 ? markerRange(valueIndex) : null;
+  document.querySelectorAll("#compare .frame").forEach((frame) => {
+    const image = frame.querySelector("img");
+    const canvas = frame.querySelector("canvas");
+    const section = show.sections[Number(frame.dataset.index)];
+    if (!image.naturalWidth || !section) return;
+    canvas.width = image.clientWidth;
+    canvas.height = image.clientHeight;
+    const scale = image.clientWidth / section.width;
+    frame._scale = scale;
+    const context = canvas.getContext("2d");
+    const radius = Math.max(2.5, image.clientWidth / 130);
+    section.spots.forEach((spot) => {
+      let color = show.types[spot[2]].color;
+      if (range) {
+        const fraction = range[1] === range[0] ? 0 : (spot[3 + valueIndex] - range[0]) / (range[1] - range[0]);
+        color = inferno(fraction);
+      }
+      context.beginPath();
+      context.fillStyle = color;
+      context.globalAlpha = 0.9;
+      context.arc(spot[0] * scale, spot[1] * scale, radius, 0, Math.PI * 2);
+      context.fill();
+    });
+  });
   const legend = document.getElementById("legend");
   if (mode === "cell") {
     legend.innerHTML = `<p><b>${t("cell")}</b></p>` + show.types.map((type) => `<div><i class="swatch" style="background:${type.color}"></i>${type[lang]}</div>`).join("");
   } else {
     const current = show.modes.find((item) => item.id === mode);
-    legend.innerHTML = `<p><b>${current[lang]}</b></p><p class="muted">low → high</p><div style="height:12px;border-radius:99px;background:linear-gradient(90deg,#000004,#65156e,#d44842,#f5c027,#fcffa4)"></div>`;
+    const shared = lang === "zh" ? "兩張圖用同一段顏色" : "both images share one color scale";
+    legend.innerHTML = `<p><b>${current[lang]}</b> · low → high · ${shared}</p><div style="height:12px;width:180px;border-radius:99px;background:linear-gradient(90deg,#000004,#65156e,#d44842,#f5c027,#fcffa4)"></div>`;
   }
 }
 
-function nearestSpot(event) {
-  const canvas = document.getElementById("spots");
-  const rect = canvas.getBoundingClientRect();
+function otherLines(section) {
+  const samples = section.samples || {};
+  if (lang === "zh") {
+    return `血漿是入組血液。空間脂質 ${samples.lipid || "—"}，空間代謝 ${samples.metabolite || "—"}，空間 N-醣 ${samples.nglycan || "—"}。這些是鄰近材料，不是這張 H&E。`;
+  }
+  return `Plasma is enrollment blood. Spatial lipidomics ${samples.lipid || "—"}, metabolomics ${samples.metabolite || "—"}, N-glycomics ${samples.nglycan || "—"}. Those are neighboring samples, not this H&E.`;
+}
+
+function showTip(event) {
+  const frame = event.currentTarget;
+  const tip = frame.querySelector(".tip");
+  const section = page.showcase.sections[Number(frame.dataset.index)];
+  const rect = frame.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
+  const scale = frame._scale || 1;
   let best = null;
-  let bestDistance = 18 * Math.max(spotScale, 0.6);
-  page.showcase.spots.forEach((spot) => {
-    const distance = Math.hypot(spot[0] * spotScale - x, spot[1] * spotScale - y);
+  let bestDistance = 16 * Math.max(scale, 0.5);
+  section.spots.forEach((spot) => {
+    const distance = Math.hypot(spot[0] * scale - x, spot[1] * scale - y);
     if (distance < bestDistance) {
       best = spot;
       bestDistance = distance;
     }
   });
-  return { spot: best, x, y };
-}
-
-function showTip(event) {
-  const tip = document.getElementById("tip");
-  const hit = nearestSpot(event);
-  if (!hit.spot) {
+  if (!best) {
     tip.hidden = true;
     return;
   }
-  const show = page.showcase;
-  const type = show.types[hit.spot[2]];
-  const lines = show.valueKeys.map((key, index) => {
-    const item = show.modes.find((modeItem) => modeItem.id === key);
-    return `<div>${item[lang]} ${Number(hit.spot[3 + index]).toFixed(2)}</div>`;
+  const type = page.showcase.types[best[2]];
+  const lines = page.showcase.valueKeys.map((key, index) => {
+    const item = page.showcase.modes.find((modeItem) => modeItem.id === key);
+    return `<div>${item[lang]} ${Number(best[3 + index]).toFixed(2)}</div>`;
   }).join("");
   tip.hidden = false;
-  tip.innerHTML = `<b>${type[lang]}</b><div>${t("spot")}</div>${lines}<div style="margin-top:6px"><b>${t("other")}</b><div>${t("otherBody")}</div></div>`;
-  const stage = document.querySelector(".stage");
-  const maxX = stage.clientWidth - tip.offsetWidth - 8;
-  tip.style.left = `${Math.max(8, Math.min(hit.x + 12, maxX))}px`;
-  tip.style.top = `${Math.max(8, hit.y + 12)}px`;
+  tip.innerHTML = `<b>${type[lang]}</b><div>${t("spot")}</div>${lines}<div style="margin-top:6px"><b>${t("other")}</b><div>${otherLines(section)}</div></div>`;
+  const maxX = frame.clientWidth - tip.offsetWidth - 8;
+  tip.style.left = `${Math.max(8, Math.min(x + 12, maxX))}px`;
+  tip.style.top = `${Math.max(8, y + 12)}px`;
 }
 
 function renderShowcase() {
@@ -338,18 +348,29 @@ function renderShowcase() {
     button.className = item.id === mode ? "active" : "";
     button.addEventListener("click", () => {
       mode = item.id;
-      renderShowcase();
+      drawSpots();
+      modes.querySelectorAll("button").forEach((node) => node.classList.toggle("active", node.textContent === item[lang]));
     });
     modes.appendChild(button);
   });
-  const image = document.getElementById("he");
-  if (image.getAttribute("src") !== show.image) {
-    image.alt = `${show.participant} H&E`;
-    image.src = show.image;
-    image.onload = drawSpots;
-  } else {
-    drawSpots();
-  }
+  const compare = document.getElementById("compare");
+  compare.innerHTML = "";
+  let pending = show.sections.length;
+  show.sections.forEach((section, index) => {
+    const block = document.createElement("article");
+    block.innerHTML = `<p class="cap">${section.caption[lang]}</p><div class="frame" data-index="${index}"><img alt="${section.participant} H&E"><canvas></canvas><div class="tip" hidden></div></div>`;
+    const frame = block.querySelector(".frame");
+    const image = frame.querySelector("img");
+    image.onerror = () => { pending -= 1; };
+    image.onload = () => {
+      pending -= 1;
+      if (pending <= 0) drawSpots();
+    };
+    image.src = section.image;
+    frame.addEventListener("mousemove", showTip);
+    frame.addEventListener("mouseleave", () => { frame.querySelector(".tip").hidden = true; });
+    compare.appendChild(block);
+  });
 }
 
 function renderCards() {
@@ -480,9 +501,7 @@ document.querySelector("nav").addEventListener("click", (event) => {
   const name = event.target.getAttribute("data-page");
   if (name) showPage(name);
 });
-document.getElementById("spots").addEventListener("mousemove", showTip);
-document.getElementById("spots").addEventListener("mouseleave", () => { document.getElementById("tip").hidden = true; });
-window.addEventListener("resize", () => { if (page) drawSpots(); });
+window.addEventListener("resize", () => { if (page && page.showcase) drawSpots(); });
 
 applyText();
 fetch("data/site.json")
